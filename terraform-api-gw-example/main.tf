@@ -84,8 +84,8 @@ resource "aws_iam_role_policy_attachment" "attach_iam_policy_to_iam_role" {
   policy_arn = aws_iam_policy.iam_policy_for_lambda.arn 
 }
 
-# permission for api gateway to invoke lambda
-resource "aws_lambda_permission" "apigw" {
+# permission for api gateway to invoke welcome lambda
+resource "aws_lambda_permission" "welcome-lambda-perm" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
   function_name = "${aws_lambda_function.welcome-lambda.function_name}"
@@ -103,11 +103,38 @@ resource "aws_lambda_function" "welcome-lambda" {
   filename         = data.archive_file.zip.output_path
   source_code_hash = data.archive_file.zip.output_base64sha256
   role             = aws_iam_role.iam_for_lambda.arn 
-  handler          = "welcome.lambda_handler"
+  handler          = "welcome.welcome_handler"
   runtime          =  "python3.9"
   depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
 }
 
+
+
+
+# permission for api gateway to invoke name lambda
+resource "aws_lambda_permission" "name-lambda-perm" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.name_lambda.function_name}"
+  principal     = "apigateway.amazonaws.com"
+
+  # The /*/* portion grants access from any method on any resource
+  # within the API Gateway "REST API".
+  source_arn = "${aws_api_gateway_rest_api.tc-api-gateway.execution_arn}/*/*"
+}
+
+
+
+# lambda function
+resource "aws_lambda_function" "name_lambda" {
+  function_name    = "name"
+  filename         = data.archive_file.zip.output_path
+  source_code_hash = data.archive_file.zip.output_base64sha256
+  role             = aws_iam_role.iam_for_lambda.arn 
+  handler          = "welcome.name_handler"
+  runtime          =  "python3.9"
+  depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+}
 
 
 

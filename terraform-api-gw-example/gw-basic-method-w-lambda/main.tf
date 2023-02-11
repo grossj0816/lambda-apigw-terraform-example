@@ -7,6 +7,7 @@ resource "aws_api_gateway_method" "method" {
 }
 
 resource "aws_api_gateway_method_response" "response" {
+  depends_on    = [aws_api_gateway_method.method]
   rest_api_id   = var.apigateway.id
   resource_id   = var.resource.id
   http_method   = var.httpmethod

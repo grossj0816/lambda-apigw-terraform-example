@@ -6,6 +6,11 @@ resource "aws_api_gateway_rest_api" "tc-api-gateway" {
   }
 }
 
+
+
+
+
+
 # ENDPOINT PATH: /terraform-course
 resource "aws_api_gateway_resource" "terraform-course" {
   rest_api_id = aws_api_gateway_rest_api.tc-api-gateway.id
@@ -20,7 +25,7 @@ resource "aws_api_gateway_resource" "hello" {
   path_part   = "hello"   
 }
 
-# module bundles up resources for setting up 
+# module bundles up resources for setting up hello endpoint
 module "hello" {
   source            = "./gw-basic-method-w-lambda"
   apigateway        = aws_api_gateway_rest_api.tc-api-gateway
@@ -30,10 +35,36 @@ module "hello" {
   httpmethod        =  "GET"
 }
 
+
+
+
+
+
+# ENDPOINT PATH: /terraform-course/{name}
+resource "aws_api_gateway_resource" "name" {
+  rest_api_id  = aws_api_gateway_rest_api.tc-api-gateway.id
+  parent_id    = aws_api_gateway_resource.terraform-course.id
+  path_part    = "{name}"
+}
+
+# module bundles up resources for setting up hello endpoint
+module "name" {
+  source            = "./gw-basic-method-w-lambda"
+  apigateway        = aws_api_gateway_rest_api.tc-api-gateway
+  resource          = aws_api_gateway_resource.name
+  lambda_function   = aws_lambda_function.name_lambda
+  authorization     = "NONE"
+  httpmethod        =  "GET"
+}
+
+
+
+
+
 resource "aws_api_gateway_deployment" "hello-deployment" {
   rest_api_id = aws_api_gateway_rest_api.tc-api-gateway.id
   # when deploying the apis in the gateway 
-  depends_on = [module.hello.integration]
+  depends_on = [module.hello.integration, module.name.integration]
   lifecycle {
     # if changes are made in the deployment create new resources before deleting
     # existing resources
