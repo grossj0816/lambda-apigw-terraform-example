@@ -1,3 +1,4 @@
+#api gateway resource
 resource "aws_api_gateway_rest_api" "tc-api-gateway" {
   name = "Terraform Courses API"
   description = "AWS Rest API Example with Terraform"
