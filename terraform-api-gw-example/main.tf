@@ -1,3 +1,4 @@
+# states what cloud provider we want to use.
 terraform {
   required_providers {
     aws = {
@@ -15,13 +16,13 @@ terraform {
   # }
 }
 
-
+# setting additional configs
 provider "aws" {
   region = "us-east-1"
 }
 
 
-# this will zip my lambda function and set the function handler we want to run
+# this will zip the file my lambdas are in.
 provider "archive" {}
 data "archive_file" "zip" {
   type = "zip"
@@ -33,7 +34,7 @@ data "archive_file" "zip" {
 # create iam role for lambda
 resource "aws_iam_role" "iam_for_lambda" {
   name = "iam_for_hello_lambda"
-  # this is a truest policy. It dictates that the role being created is of aws lambda
+  # this is a trust policy. It dictates that the role being created is of aws lambda
   # and to assume that role.
   assume_role_policy = <<EOF
 {
@@ -52,7 +53,7 @@ resource "aws_iam_role" "iam_for_lambda" {
   EOF
 }
 
-# create iam policy for lambda. iam policy dictates what the lambda role
+# create iam policy for lambda. iam policy dictates the actions that the lambda is allowed to do.
 resource "aws_iam_policy" "iam_policy_for_lambda" {
   
   name        = "aws_iam_policy_for_terraform_aws_lambda_role"
