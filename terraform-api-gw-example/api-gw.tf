@@ -63,7 +63,7 @@ module "delete_user" {
   apigateway        = aws_api_gateway_rest_api.tc-api-gateway
   resource          = aws_api_gateway_resource.indiv-user
   lambda_function   = aws_lambda_function.deleteUser_lambda
-  # authorization     = "NONE"
+  authorization     = "NONE"
   httpmethod        =  "DELETE"
 }
 
