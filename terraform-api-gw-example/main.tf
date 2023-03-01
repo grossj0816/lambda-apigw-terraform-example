@@ -6,13 +6,13 @@ terraform {
     }
   }
 
-  # backend "s3" {
-  #   bucket = "tc-terraform-state-locking"
-  #   key = "tc/s4/terraform.tfstate"
-  #   region = "us-east-1"
-  #   dynamodb_table = "terraform-state-locking"
-  #   encrypt = true
-  # }
+  backend "s3" {
+    bucket = "tc-terraform-state-storage-s3"
+    key = "api-terraform-courses"
+    region = "us-east-1"
+    dynamodb_table = "terraform-state-locking"
+    encrypt = true
+  }
 }
 
 
@@ -21,13 +21,17 @@ provider "aws" {
 }
 
 
-# this will zip my lambda function and set the function handler we want to run
+
+# this will zip my lambda functions and set the function handlers we want to run
 provider "archive" {}
-data "archive_file" "zip" {
+
+data "archive_file" "users-zip" {
   type = "zip"
-  source_file = "welcome.py"
-  output_path = "welcome.zip"
+  source_dir = "../lambdas"
+  output_path = "../lambda-zips/users.zip"
 }
+
+
 
 
 # create iam role for lambda
@@ -66,10 +70,23 @@ resource "aws_iam_policy" "iam_policy_for_lambda" {
         "Action": [
           "logs:CreateLogGroup",
           "logs:CreateLogStream",
-          "logs:PutLogEvents",
-          "iam:PassRole"
+          "logs:PutLogEvents"
         ],
         "Resource": "arn:aws:logs:*:*:*",
+        "Effect": "Allow"
+      },
+      {
+        "Action": [
+          "dynamodb:BatchGetItem",
+          "dynamodb:GetItem",
+          "dynamodb:Query",
+          "dynamodb:Scan",
+          "dynamodb:BatchWriteItem",
+          "dynamodb:PutItem",
+          "dynamodb:UpdateItem",
+          "dynamodb:DeleteItem"
+        ],
+        "Resource": "arn:aws:dynamodb:us-east-1:294652976462:table/users",
         "Effect": "Allow"
       }
     ]
@@ -84,38 +101,14 @@ resource "aws_iam_role_policy_attachment" "attach_iam_policy_to_iam_role" {
   policy_arn = aws_iam_policy.iam_policy_for_lambda.arn 
 }
 
-# permission for api gateway to invoke welcome lambda
-resource "aws_lambda_permission" "welcome-lambda-perm" {
+
+
+
+# permission for api gateway to invoke lambda
+resource "aws_lambda_permission" "fetchAllUsers-lambda-perm" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
-  function_name = "${aws_lambda_function.welcome-lambda.function_name}"
-  principal     = "apigateway.amazonaws.com"
-
-  # The /*/* portion grants access from any method on any resource
-  # within the API Gateway "REST API".
-  source_arn = "${aws_api_gateway_rest_api.tc-api-gateway.execution_arn}/*/*"
-}
-
-
-# lambda function
-resource "aws_lambda_function" "welcome-lambda" {
-  function_name    = "welcome"
-  filename         = data.archive_file.zip.output_path
-  source_code_hash = data.archive_file.zip.output_base64sha256
-  role             = aws_iam_role.iam_for_lambda.arn 
-  handler          = "welcome.welcome_handler"
-  runtime          =  "python3.9"
-  depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
-}
-
-
-
-
-# permission for api gateway to invoke name lambda
-resource "aws_lambda_permission" "name-lambda-perm" {
-  statement_id  = "AllowAPIGatewayInvoke"
-  action        = "lambda:InvokeFunction"
-  function_name = "${aws_lambda_function.name_lambda.function_name}"
+  function_name = "${aws_lambda_function.fetchAllUsers_lambda.function_name}"
   principal     = "apigateway.amazonaws.com"
 
   # The /*/* portion grants access from any method on any resource
@@ -126,20 +119,119 @@ resource "aws_lambda_permission" "name-lambda-perm" {
 
 
 # lambda function
-resource "aws_lambda_function" "name_lambda" {
-  function_name    = "name"
-  filename         = data.archive_file.zip.output_path
-  source_code_hash = data.archive_file.zip.output_base64sha256
+resource "aws_lambda_function" "fetchAllUsers_lambda" {
+  function_name    = "fetchAllUsers"
+  filename         = data.archive_file.users-zip.output_path
+  source_code_hash = data.archive_file.users-zip.output_base64sha256
   role             = aws_iam_role.iam_for_lambda.arn 
-  handler          = "welcome.name_handler"
+  handler          = "users.users_getter_handler"
   runtime          =  "python3.9"
   depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+
+}
+
+
+# permission for api gateway to invoke lambda
+resource "aws_lambda_permission" "fetchUser-lambda-perm" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.fetchUser_lambda.function_name}"
+  principal     = "apigateway.amazonaws.com"
+
+  # The /*/* portion grants access from any method on any resource
+  # within the API Gateway "REST API".
+  source_arn = "${aws_api_gateway_rest_api.tc-api-gateway.execution_arn}/*/*"
+}
+
+
+# lambda function
+resource "aws_lambda_function" "fetchUser_lambda" {
+  function_name    = "fetchUser"
+  filename         = data.archive_file.users-zip.output_path
+  source_code_hash = data.archive_file.users-zip.output_base64sha256
+  role             = aws_iam_role.iam_for_lambda.arn 
+  handler          = "users.user_getter_handler"
+  runtime          =  "python3.9"
+  depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+
 }
 
 
 
+# permission for api gateway to invoke lambda
+resource "aws_lambda_permission" "createUser-lambda-perm" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.createUser_lambda.function_name}"
+  principal     = "apigateway.amazonaws.com"
+
+  # The /*/* portion grants access from any method on any resource
+  # within the API Gateway "REST API".
+  source_arn = "${aws_api_gateway_rest_api.tc-api-gateway.execution_arn}/*/*"
+}
+
+
+# lambda function
+resource "aws_lambda_function" "createUser_lambda" {
+  function_name    = "createUser"
+  filename         = data.archive_file.users-zip.output_path
+  source_code_hash = data.archive_file.users-zip.output_base64sha256
+  role             = aws_iam_role.iam_for_lambda.arn 
+  handler          = "users.create_user_handler"
+  runtime          =  "python3.9"
+  depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+
+}
+
+
+# permission for api gateway to invoke lambda
+resource "aws_lambda_permission" "updateUser-lambda-perm" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.updateUser_lambda.function_name}"
+  principal     = "apigateway.amazonaws.com"
+
+  # The /*/* portion grants access from any method on any resource
+  # within the API Gateway "REST API".
+  source_arn = "${aws_api_gateway_rest_api.tc-api-gateway.execution_arn}/*/*"
+}
+
+
+# lambda function
+resource "aws_lambda_function" "updateUser_lambda" {
+  function_name    = "updateUser"
+  filename         = data.archive_file.users-zip.output_path
+  source_code_hash = data.archive_file.users-zip.output_base64sha256
+  role             = aws_iam_role.iam_for_lambda.arn 
+  handler          = "users.update_user_handler"
+  runtime          =  "python3.9"
+  depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+
+}
 
 
 
+# permission for api gateway to invoke lambda
+resource "aws_lambda_permission" "deleteUser-lambda-perm" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = "${aws_lambda_function.deleteUser_lambda.function_name}"
+  principal     = "apigateway.amazonaws.com"
+
+  # The /*/* portion grants access from any method on any resource
+  # within the API Gateway "REST API".
+  source_arn = "${aws_api_gateway_rest_api.tc-api-gateway.execution_arn}/*/*"
+}
 
 
+# lambda function
+resource "aws_lambda_function" "deleteUser_lambda" {
+  function_name    = "deleteUser"
+  filename         = data.archive_file.users-zip.output_path
+  source_code_hash = data.archive_file.users-zip.output_base64sha256
+  role             = aws_iam_role.iam_for_lambda.arn 
+  handler          = "users.delete_user_handler"
+  runtime          =  "python3.9"
+  depends_on       = [aws_iam_role_policy_attachment.attach_iam_policy_to_iam_role]
+
+}

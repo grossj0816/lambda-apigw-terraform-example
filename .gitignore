@@ -1,7 +1,8 @@
 terraform-api-gw-example/.terraform
 terraform-api-gw-example/terraform.tfstate
 terraform-api-gw-example/terraform.tfstate.backup
-terraform-api-gw-example/welcome.zip
-
+terraform-api-gw-example/.terraform.lock.hcl
+ssh
+lambda-zips
 
 
