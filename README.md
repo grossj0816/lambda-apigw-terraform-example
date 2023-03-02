@@ -8,3 +8,12 @@ The baseline of this project was to use write terraform code to provision infras
   <li>Lambda Functions (Python)</li>
   <li>DynamoDB table for CRUD Operations on user table</li>
 </ul>
+
+<hr/>
+
+<h4>Online Sources that helped me in the development of this project: </h4>
+
+<ul>
+  <li><a href="https://boto3.amazonaws.com/v1/documentation/api/latest/guide/dynamodb.html">Boto3 Docs</a></li>
+  <li><a href="https://aws-lambda-for-python-developers.readthedocs.io/en/latest/02_event_and_context/#event">AWS Lambda for Python Developers</a></li>
+</ul>
